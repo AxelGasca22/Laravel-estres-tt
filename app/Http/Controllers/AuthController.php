@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -94,5 +95,48 @@ class AuthController extends Controller
         return [
             'user' => null
         ];
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $status = Password::broker()->sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json(['status' => 'Si el correo está registrado en nuestro sistema, se ha enviado un enlace de recuperación a su correo electrónico con los pasos a seguir.']);
+        }
+
+        return response()->json(['errors' => ['email' => [__($status)]]], 422);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password)
+                ])->save();
+
+                $user->tokens()->delete();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json(['status' => 'Contraseña restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.']);
+        }
+
+        return response()->json(['errors' => ['email' => [__($status)]]], 422);
     }
 }

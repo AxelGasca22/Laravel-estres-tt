@@ -38,6 +38,8 @@ Route::middleware('auth:sanctum')->group(function () {
 // Autenticacion
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Public endpoint for psychologists list (mobile app)
 Route::get('/psicologos-public', [PsicologoController::class, 'publicIndex']);
