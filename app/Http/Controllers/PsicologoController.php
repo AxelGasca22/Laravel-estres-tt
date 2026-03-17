@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\PsicologoCollection;
+use App\Mail\BienvenidoPsicologo;
 use App\Models\Paciente;
 use App\Models\ProgresoActividad;
 use App\Models\Psicologo;
@@ -10,6 +11,7 @@ use App\Models\Sesion;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class PsicologoController extends Controller
 {
@@ -79,7 +81,31 @@ class PsicologoController extends Controller
             'cedula_profesional' => ''
         ]);
 
+        $passwordPlain = $validatedData['password'];
+
+        // ENviar correo de confirmacion al psicologo
+        Mail::to($psicologo->email)->send(new BienvenidoPsicologo($psicologo, $passwordPlain));
+
         return response()->json(['message' => 'Psicólogo creado exitosamente']);
+    }
+
+    public function confirmarCuenta(Request $request, User $user)
+    {
+        // Verifica si la firma de la URL es válida y no ha expirado
+        if (! $request->hasValidSignature()) {
+            abort(401, 'El enlace de confirmación es inválido o ha expirado.');
+        }
+
+        // Guardar en la base de datos que ya está confirmado
+        if (is_null($user->email_verified_at)) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+
+        // Redirigir al frontend de React
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        
+        return redirect()->away($frontendUrl . '/cuenta-confirmada');
     }
 
     /**
@@ -210,7 +236,7 @@ class PsicologoController extends Controller
                 'completadas' => $actividadesCompletadas,
                 'pendientes' => $actividadesPendientes,
                 'porcentaje' => $porcentajeCompletadas,
-                'tendencia' => 5 // Aquí puedes calcular la tendencia real contra el mes pasado
+                'tendencia' => 5 // calcular la tendencia real contra el mes pasado
             ],
             'estres' => [
                 'bajo' => $estresBajo,
