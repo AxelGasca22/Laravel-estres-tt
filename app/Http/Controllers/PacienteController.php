@@ -7,6 +7,7 @@ use App\Models\Calificacion;
 use App\Models\Paciente;
 use App\Models\ProgresoActividad;
 use App\Models\Sesion;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -89,6 +90,25 @@ class PacienteController extends Controller
     public function store(Request $request)
     {
         //
+    }
+
+    /**
+     * Confirm the user's email address.
+     */
+    public function confirmarCuenta(Request $request, User $user)
+    {
+        if (! $request->hasValidSignature()) {
+            return response('El enlace de confirmación es inválido o ha expirado.', 401);
+        }
+
+        if (is_null($user->email_verified_at)) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        
+        return redirect()->away($frontendUrl . '/cuenta-confirmada-paciente');
     }
 
     /**
