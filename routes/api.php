@@ -16,7 +16,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
-    Route::post('/logout', [AuthController:: class, 'logout']);
+    Route::post('/logout', [AuthController::class, 'logout']);
     Route::apiResource('/pacientes', PacienteController::class);
     Route::apiResource('/psicologos', PsicologoController::class);
     Route::get('/dashboard', [PsicologoController::class, 'dashboard']);
@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // Autenticacion
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/resend-verification-email', [AuthController::class, 'resendVerificationEmail']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 

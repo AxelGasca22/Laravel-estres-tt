@@ -67,10 +67,11 @@ class AuthController extends Controller
         // correo al paciente
         Mail::to($user->email)->send(new BienvenidoPaciente($user));
 
-        return [
-            'token' => $user->createToken('token')->plainTextToken,
+        return response()->json([
+            'message' => 'Te registraste correctamente. Revisa tu correo y confirma tu cuenta antes de iniciar sesión.',
+            'requires_email_verification' => true,
             'user' => $user,
-        ];
+        ], 201);
     }
 
     public function login(LoginRequest $request)
@@ -86,6 +87,15 @@ class AuthController extends Controller
 
         // Autenticar usuario
         $user = Auth::user();
+
+        if (is_null($user->email_verified_at)) {
+            Auth::logout();
+
+            return response()->json([
+                'errors' => ['Debes verificar tu correo antes de acceder a la aplicación. Revisa tu bandeja de entrada.']
+            ], 403);
+        }
+
         return [
             'token' => $user->createToken('token')->plainTextToken,
             'user' => $user
@@ -143,5 +153,34 @@ class AuthController extends Controller
         }
 
         return response()->json(['errors' => ['email' => [__($status)]]], 422);
+    }
+
+    public function resendVerificationEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if ($user->role !== 'paciente') {
+            return response()->json([
+                'errors' => ['No fue posible reenviar el correo de verificación para esta cuenta.']
+            ], 422);
+        }
+
+        if (!is_null($user->email_verified_at)) {
+            return response()->json([
+                'message' => 'Tu correo ya está verificado. Ya puedes iniciar sesión.',
+                'already_verified' => true,
+            ]);
+        }
+
+        Mail::to($user->email)->send(new BienvenidoPaciente($user));
+
+        return response()->json([
+            'message' => 'Te reenviamos el correo de verificación. Revisa tu bandeja de entrada y spam.',
+            'resent' => true,
+        ]);
     }
 }
