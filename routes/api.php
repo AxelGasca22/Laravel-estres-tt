@@ -45,5 +45,9 @@ Route::get('/verificar-psicologo/{user}', [PsicologoController::class, 'confirma
     ->name('psicologo.verify')
     ->middleware('signed');
 
+Route::get('/verificar-paciente/{user}', [PacienteController::class, 'confirmarCuenta'])
+    ->name('paciente.verify')
+    ->middleware('signed');
+
 // Public endpoint for psychologists list (mobile app)
 Route::get('/psicologos-public', [PsicologoController::class, 'publicIndex']);

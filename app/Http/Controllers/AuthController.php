@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Paciente;
 use App\Models\User;
 use App\Http\Requests\LoginRequest;
+use App\Mail\BienvenidoPaciente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
@@ -55,12 +57,15 @@ class AuthController extends Controller
 
         $edad = Carbon::parse($data['fecha_nacimiento'])->age;
 
-        Paciente::create([
+        $paciente = Paciente::create([
             'user_id' => $user->id,
             'sexo' => $sexo,
             'edad' => $edad,
             'semestre' => $data['semestre'] ?? null,
         ]);
+
+        // correo al paciente
+        Mail::to($user->email)->send(new BienvenidoPaciente($user));
 
         return [
             'token' => $user->createToken('token')->plainTextToken,

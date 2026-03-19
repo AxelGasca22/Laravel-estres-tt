@@ -11,7 +11,7 @@
         
         <tr>
             <td style="background-color: #A2D9CE; padding: 40px 20px; text-align: center;">
-                <img src="/resources/assets/Logo_Final_FullColor.jpg" alt="Vidazen" style="width: 80px; height: auto;">
+                <img src="../../../assets/Isotipo-Logo Final-04.svg" alt="Vidazen" style="width: 80px; height: auto;">
             </td>
         </tr>
 
