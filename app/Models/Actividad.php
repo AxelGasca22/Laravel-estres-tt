@@ -13,6 +13,7 @@ class Actividad extends Model
         'descripcion',
         'tipo',
         'tiempo_estimado_min',
+        'modulo',
         'categoria_id',
     ];
 
@@ -24,5 +25,10 @@ class Actividad extends Model
     public function progresos()
     {
         return $this->hasMany(ProgresoActividad::class, 'actividad_id');
+    }
+
+    public function recursos()
+    {
+        return $this->hasMany(RecursoActividad::class, 'actividad_id');
     }
 }
