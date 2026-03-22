@@ -22,7 +22,7 @@ class ActividadController extends Controller
      */
     public function store(Request $request)
     {
-        if($request->input('role') !== 'psicologo') {
+        if ($request->input('role') !== 'psicologo') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -31,6 +31,7 @@ class ActividadController extends Controller
         $actividad->descripcion = $request->input('descripcion');
         $actividad->tipo = $request->input('categoria');
         $actividad->tiempo_estimado_min = $request->input('duracion');
+        $actividad->modulo = (int) $request->input('modulo', 1);
         $actividad->categoria_id = '1';
         $actividad->save();
 
@@ -50,7 +51,7 @@ class ActividadController extends Controller
      */
     public function show(Request $request, string $id)
     {
-        if($request->input('role') !== 'psicologo') {
+        if ($request->input('role') !== 'psicologo') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -64,19 +65,20 @@ class ActividadController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        if($request->input('role') !== 'psicologo') {
+        if ($request->input('role') !== 'psicologo') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-            $actividadProgreso = ProgresoActividad::findorFail($id);
-            $actividad = Actividad::findorFail($actividadProgreso->actividad_id);
-            $actividad->nombre = $request->input('nombre');
-            $actividad->descripcion = $request->input('descripcion');
-            $actividad->tipo = $request->input('categoria');
-            $actividad->tiempo_estimado_min = $request->input('duracion');
-            $actividad->save();
-    
-            return response()->json(['message' => 'Actividad actualizada exitosamente']);
+        $actividadProgreso = ProgresoActividad::findorFail($id);
+        $actividad = Actividad::findorFail($actividadProgreso->actividad_id);
+        $actividad->nombre = $request->input('nombre');
+        $actividad->descripcion = $request->input('descripcion');
+        $actividad->tipo = $request->input('categoria');
+        $actividad->tiempo_estimado_min = $request->input('duracion');
+        $actividad->modulo = (int) $request->input('modulo', 1);
+        $actividad->save();
+
+        return response()->json(['message' => 'Actividad actualizada exitosamente']);
     }
 
     /**
@@ -85,7 +87,7 @@ class ActividadController extends Controller
     public function destroy(string $id)
     {
 
-        if(request()->input('role') !== 'psicologo') {
+        if (request()->input('role') !== 'psicologo') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

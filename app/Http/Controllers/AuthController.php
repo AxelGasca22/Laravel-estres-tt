@@ -88,7 +88,13 @@ class AuthController extends Controller
         // Autenticar usuario
         $user = Auth::user();
 
-        if ($user->role === 'paciente' && is_null($user->email_verified_at)) {
+        $shouldRequireEmailVerification = !app()->environment(['local', 'development', 'testing']);
+
+        if (
+            $shouldRequireEmailVerification
+            && $user->role === 'paciente'
+            && is_null($user->email_verified_at)
+        ) {
             Auth::logout();
 
             return response()->json([
