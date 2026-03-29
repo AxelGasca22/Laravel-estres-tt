@@ -35,7 +35,7 @@ class PacienteController extends Controller
                     'progresoActividad',
                 ])
                 ->get();
-            
+
             $pacientesSinAsignar = Paciente::whereNull('psicologo_id')
                 ->with('user')
                 ->get();
@@ -67,7 +67,8 @@ class PacienteController extends Controller
             ->map(function (Calificacion $calificacion) {
                 return [
                     'score' => (int) round($calificacion->calificacion_general),
-                    'created_at' => optional($calificacion->fecha_realizacion)->toDateString(),
+                    'created_at' => optional($calificacion->fecha_realizacion)->toIso8601String(),
+                    'source' => 'test',
                 ];
             });
 
@@ -76,6 +77,7 @@ class PacienteController extends Controller
             $puntos->push([
                 'score' => (int) round($nivelActual),
                 'created_at' => now()->toIso8601String(),
+                'source' => 'current',
             ]);
         }
 
@@ -107,7 +109,7 @@ class PacienteController extends Controller
         }
 
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
-        
+
         return redirect()->away($frontendUrl . '/cuenta-confirmada-paciente');
     }
 
@@ -120,91 +122,91 @@ class PacienteController extends Controller
         Carbon::setLocale('es');
 
         // if($request->input('role') === 'psicologo') {
-            // 1. Obtener información básica del paciente y su usuario
-            $paciente = Paciente::with('user')->findOrFail($id);
+        // 1. Obtener información básica del paciente y su usuario
+        $paciente = Paciente::with('user')->findOrFail($id);
 
-            // 2. Datos para el Gráfico
-            $registros = DB::table('calificaciones')
-                ->where('paciente_id', $id)
-                ->orderBy('fecha_realizacion', 'desc') 
-                ->take(7)
-                ->get();
+        // 2. Datos para el Gráfico
+        $registros = DB::table('calificaciones')
+            ->where('paciente_id', $id)
+            ->orderBy('fecha_realizacion', 'desc')
+            ->take(7)
+            ->get();
 
-            // Luego los reordenamos cronológicamente para el gráfico (izq a der)
-            $historialOrdenado = $registros->sortBy('fecha_realizacion');
+        // Luego los reordenamos cronológicamente para el gráfico (izq a der)
+        $historialOrdenado = $registros->sortBy('fecha_realizacion');
 
-            // Preparamos los arrays simples (usando values() para evitar índices extraños)
-            $labels = $historialOrdenado->map(function($item) {
-                // Formateamos la fecha: "10 Feb"
-                return \Carbon\Carbon::parse($item->fecha_realizacion)->format('d M');
-            })->values()->all();
+        // Preparamos los arrays simples (usando values() para evitar índices extraños)
+        $labels = $historialOrdenado->map(function ($item) {
+            // Formateamos la fecha: "10 Feb"
+            return \Carbon\Carbon::parse($item->fecha_realizacion)->format('d M');
+        })->values()->all();
 
-            $valores = $historialOrdenado->pluck('calificacion_general')->values()->all();
+        $valores = $historialOrdenado->pluck('calificacion_general')->values()->all();
 
-            // 3. Estadísticas de Sesiones
-            $totalSesiones = Sesion::where('paciente_id', $id)->count();
-            
-            $proximaSesion = Sesion::where('paciente_id', $id)
-                ->where('fecha', '>=', now())
-                ->orderBy('fecha', 'asc')
-                ->orderBy('hora', 'asc')
-                ->first();
+        // 3. Estadísticas de Sesiones
+        $totalSesiones = Sesion::where('paciente_id', $id)->count();
 
-            // 4. Módulos y Actividades (Progreso y Tabla Reciente)
-            // Hacemos join con 'actividades' para obtener el nombre y descripción
-            $actividades = ProgresoActividad::where('paciente_id', $id)
-                ->with('actividad')
-                ->orderBy('updated_at', 'desc')
-                ->get();
+        $proximaSesion = Sesion::where('paciente_id', $id)
+            ->where('fecha', '>=', now())
+            ->orderBy('fecha', 'asc')
+            ->orderBy('hora', 'asc')
+            ->first();
 
-            // Calculamos estadísticas de tareas
-            $totalActividades = $actividades->count();
-            $actividadesCompletadas = $actividades->where('estado', 'completado')->count();
-            $porcentajeGlobal = $totalActividades > 0 
-                ? round(($actividadesCompletadas / $totalActividades) * 100) 
-                : 0;
+        // 4. Módulos y Actividades (Progreso y Tabla Reciente)
+        // Hacemos join con 'actividades' para obtener el nombre y descripción
+        $actividades = ProgresoActividad::where('paciente_id', $id)
+            ->with('actividad')
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
-            // 5. Estructurar respuesta JSON para el Frontend
-            return response()->json([
-                'perfil' => [
-                    'id' => $paciente->id,
-                    'nombre' => $paciente->user->name,
-                    'email' => $paciente->user->email,
-                    'nivel_estres_actual' => $paciente->nivel_estres_actual,
-                    'sexo' => $paciente->sexo,
-                    'edad' => $paciente->edad,
-                ],
-                'grafico_estres' => [
-                    'labels' => $labels,
-                    'data' => $valores,
-                ],
-                'stats' => [
-                    'animo_actual' => $paciente->nivel_estres_actual > 26 ? 'Alto' : ($paciente->nivel_estres_actual > 21 ? 'Moderado' : 'Bajo'), 
-                    'mejora_porcentaje' => 15, 
-                    'total_sesiones' => $totalSesiones,
-                    'proxima_sesion' => $proximaSesion ? $proximaSesion->fecha . ' ' . $proximaSesion->hora : null,
-                    'tareas_completadas_porcentaje' => $porcentajeGlobal,
-                    'total_tareas' => $totalActividades
-                ],
-                'modulos' => $actividades->map(function($progreso) {
-                    return [
-                        'id' => $progreso->id,
-                        'nombre' => $progreso->actividad->nombre,
-                        'progreso' => $progreso->progreso_porcentaje,
-                        'estado' => $progreso->estado,
-                        'fecha_actualizacion' => $progreso->updated_at->diffForHumans(),
-                    ];
-                }),
-                'actividad_reciente' => $actividades->take(3)->map(function($progreso) {
-                    return [
-                        'id' => $progreso->id,
-                        'nombre' => $progreso->actividad->nombre,
-                        'estado' => $progreso->estado,
-                        'fecha_actualizacion' => $progreso->updated_at->diffForHumans(),
-                        'progreso' => $progreso->progreso_porcentaje,
-                    ];
-                }),
-            ]);
+        // Calculamos estadísticas de tareas
+        $totalActividades = $actividades->count();
+        $actividadesCompletadas = $actividades->where('estado', 'completado')->count();
+        $porcentajeGlobal = $totalActividades > 0
+            ? round(($actividadesCompletadas / $totalActividades) * 100)
+            : 0;
+
+        // 5. Estructurar respuesta JSON para el Frontend
+        return response()->json([
+            'perfil' => [
+                'id' => $paciente->id,
+                'nombre' => $paciente->user->name,
+                'email' => $paciente->user->email,
+                'nivel_estres_actual' => $paciente->nivel_estres_actual,
+                'sexo' => $paciente->sexo,
+                'edad' => $paciente->edad,
+            ],
+            'grafico_estres' => [
+                'labels' => $labels,
+                'data' => $valores,
+            ],
+            'stats' => [
+                'animo_actual' => $paciente->nivel_estres_actual > 26 ? 'Alto' : ($paciente->nivel_estres_actual > 21 ? 'Moderado' : 'Bajo'),
+                'mejora_porcentaje' => 15,
+                'total_sesiones' => $totalSesiones,
+                'proxima_sesion' => $proximaSesion ? $proximaSesion->fecha . ' ' . $proximaSesion->hora : null,
+                'tareas_completadas_porcentaje' => $porcentajeGlobal,
+                'total_tareas' => $totalActividades
+            ],
+            'modulos' => $actividades->map(function ($progreso) {
+                return [
+                    'id' => $progreso->id,
+                    'nombre' => $progreso->actividad->nombre,
+                    'progreso' => $progreso->progreso_porcentaje,
+                    'estado' => $progreso->estado,
+                    'fecha_actualizacion' => $progreso->updated_at->diffForHumans(),
+                ];
+            }),
+            'actividad_reciente' => $actividades->take(3)->map(function ($progreso) {
+                return [
+                    'id' => $progreso->id,
+                    'nombre' => $progreso->actividad->nombre,
+                    'estado' => $progreso->estado,
+                    'fecha_actualizacion' => $progreso->updated_at->diffForHumans(),
+                    'progreso' => $progreso->progreso_porcentaje,
+                ];
+            }),
+        ]);
         // }
     }
 
