@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             RespuestaPreguntaSeeder::class,
             CategoriaSeeder::class,
             ActividadSeeder::class,
+            RecursoActividadSeeder::class,
             SesionSeeder::class,
             ProgresoActividadSeeder::class,
             CalificacionSeeder::class,
