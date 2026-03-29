@@ -208,6 +208,8 @@ class ProgresoActividadController extends Controller
                 'modulo' => $progreso->actividad->modulo,
                 'estado' => $progreso->estado,
                 'porcentaje' => $progreso->progreso_porcentaje,
+                'fecha' => $progreso->fecha,
+                'updated_at' => optional($progreso->updated_at)->toIso8601String(),
                 'tiempo_estimado_min' => $progreso->actividad->tiempo_estimado_min,
             ];
         })->filter()->values();
@@ -266,6 +268,8 @@ class ProgresoActividadController extends Controller
                 'modulo' => $progreso->actividad->modulo,
                 'estado' => $progreso->estado,
                 'porcentaje' => $progreso->progreso_porcentaje,
+                'fecha' => $progreso->fecha,
+                'updated_at' => optional($progreso->updated_at)->toIso8601String(),
                 'tiempo_estimado_min' => $progreso->actividad->tiempo_estimado_min,
             ]
         ]);
@@ -276,7 +280,59 @@ class ProgresoActividadController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $user = $request->user();
+        $paciente = Paciente::where('user_id', $user->id)->first();
+
+        if (!$paciente) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El perfil de paciente no fue encontrado.'
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'porcentaje' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'estado' => ['nullable', 'string', 'in:pendiente,en_progreso,completado'],
+        ]);
+
+        $progreso = ProgresoActividad::where('paciente_id', $paciente->id)
+            ->where(function ($query) use ($id) {
+                $query->where('id', $id)
+                    ->orWhere('actividad_id', $id);
+            })
+            ->first();
+
+        if (!$progreso) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El progreso de actividad no fue encontrado.'
+            ], 404);
+        }
+
+        $porcentaje = array_key_exists('porcentaje', $validated)
+            ? (float) $validated['porcentaje']
+            : 100.0;
+
+        $estado = $validated['estado'] ?? null;
+        if ($estado === null) {
+            $estado = $porcentaje >= 100 ? 'completado' : 'en_progreso';
+        }
+
+        $progreso->progreso_porcentaje = $porcentaje;
+        $progreso->estado = $estado;
+        $progreso->fecha = now()->toDateString();
+        $progreso->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Progreso de actividad actualizado.',
+            'data' => [
+                'progreso_id' => $progreso->id,
+                'actividad_id' => $progreso->actividad_id,
+                'porcentaje' => $progreso->progreso_porcentaje,
+                'estado' => $progreso->estado,
+            ]
+        ]);
     }
 
     /**
