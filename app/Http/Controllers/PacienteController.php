@@ -48,6 +48,72 @@ class PacienteController extends Controller
         }
     }
 
+    public function datosPaciente(Request $request)
+    {
+        $user = $request->user();
+        $paciente = Paciente::where('user_id', $user->id)->first();
+
+        if (!$paciente) {
+            return response()->json([
+                'message' => 'Paciente no encontrado para el usuario autenticado',
+            ], 404);
+        }
+
+        return response()->json([
+            'id' => $paciente->id,
+            'nombre' => $paciente->user->name,
+            'semestre' => $paciente->semestre,
+            'sexo' => $paciente->sexo,
+            'edad' => $paciente->edad,
+        ]);
+    }
+
+    public function actualizarDatosPaciente(Request $request)
+    {
+        $user = $request->user();
+        $paciente = Paciente::where('user_id', $user->id)->first();
+
+        if (!$paciente) {
+            return response()->json([
+                'message' => 'Paciente no encontrado para el usuario autenticado',
+            ], 404);
+        }
+
+        $validatedData = $request->validate([
+            'nombre' => 'sometimes|string|max:255',
+            'semestre' => 'sometimes|integer|min:1|max:8',
+            'sexo' => 'sometimes|string|in:M,F,Otro',
+            'edad' => 'sometimes|integer|min:0|max:120',
+        ]);
+
+        if (isset($validatedData['nombre'])) {
+            $paciente->user->name = $validatedData['nombre'];
+            $paciente->user->save();
+        }
+        if (isset($validatedData['semestre'])) {
+            $paciente->semestre = $validatedData['semestre'];
+        }
+        if (isset($validatedData['sexo'])) {
+            $paciente->sexo = $validatedData['sexo'];
+        }
+        if (isset($validatedData['edad'])) {
+            $paciente->edad = $validatedData['edad'];
+        }
+
+        $paciente->save();
+
+        return response()->json([
+            'message' => 'Datos del paciente actualizados correctamente',
+            'data' => [
+                'id' => $paciente->id,
+                'nombre' => $paciente->user->name,
+                'semestre' => $paciente->semestre,
+                'sexo' => $paciente->sexo,
+                'edad' => $paciente->edad,
+            ],
+        ]);
+    }
+
     /**
      * Devuelve el historial de niveles de estrés del paciente autenticado.
      */

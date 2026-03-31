@@ -16,7 +16,9 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
-    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout', [AuthController:: class, 'logout']);
+    Route::get('/pacientes/perfil', [PacienteController::class, 'datosPaciente']);
+    Route::put('/pacientes/perfil', [PacienteController::class, 'actualizarDatosPaciente']);
     Route::apiResource('/pacientes', PacienteController::class);
     Route::apiResource('/psicologos', PsicologoController::class);
     Route::get('/dashboard', [PsicologoController::class, 'dashboard']);
