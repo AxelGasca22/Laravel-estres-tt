@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Test;
+use App\Models\Calificacion;
 use App\Models\Paciente;
+use App\Models\HistorialCalificacion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class TestController extends Controller
 {
@@ -61,12 +64,44 @@ class TestController extends Controller
             ], 404);
         }
 
-        $paciente->nivel_estres_actual = $validated['score'];
+        $score = (int) $validated['score'];
+        $fecha = Carbon::now();
+        $categoria = $this->categoriaPorValor($score);
+
+        $calificacion = Calificacion::create([
+            'paciente_id' => $paciente->id,
+            'test_id' => $test->id,
+            'fecha_realizacion' => $fecha->toDateString(),
+            'calificacion_general' => $score,
+            'categoria' => $categoria,
+        ]);
+
+        HistorialCalificacion::create([
+            'calificacion_id' => $calificacion->id,
+            'fecha' => $fecha->toDateString(),
+            'valor' => $score,
+            'categoria' => $categoria,
+        ]);
+
+        $paciente->nivel_estres_actual = $score;
         $paciente->save();
 
         return (new \App\Http\Resources\PacienteResource($paciente))
             ->additional([
                 'message' => 'Nivel de estrés actualizado',
             ]);
+    }
+
+    private function categoriaPorValor(int $valor): string
+    {
+        if ($valor <= 19) {
+            return 'Bajo';
+        }
+
+        if ($valor <= 25) {
+            return 'Moderado';
+        }
+
+        return 'Alto';
     }
 }

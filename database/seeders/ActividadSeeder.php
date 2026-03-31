@@ -18,6 +18,10 @@ class ActividadSeeder extends Seeder
             ?? Categoria::where('nombre_categoria', 'Estrés Moderado')->first()
             ?? Categoria::first();
 
+        $categoriaEjercicio = Categoria::where('nombre_categoria', 'Ejercicio Físico')->first()
+            ?? Categoria::where('nombre_categoria', 'Estrés Moderado')->first()
+            ?? $categoriaRespiracion;
+
         if (! $categoriaRespiracion) {
             return;
         }
@@ -70,6 +74,126 @@ class ActividadSeeder extends Seeder
                 'tiempo_estimado_min' => 5,
                 'modulo' => 5,
                 'categoria_id' => $categoriaRespiracion->id,
+            ],
+            [
+                'nombre' => 'Meditación respiración profunda',
+                'descripcion' => 'Enfócate en una respiración lenta y consciente. Inhala por la nariz, retén suavemente y exhala largo por la boca. Repite el ciclo con atención plena para reducir activación y ansiedad.',
+                'tipo' => 'meditacion',
+                'tiempo_estimado_min' => 2.51,
+                'modulo' => 1,
+                'categoria_id' => $categoriaRespiracion->id,
+            ],
+            [
+                'nombre' => 'Relajación corporal progresiva',
+                'descripcion' => 'Recorre el cuerpo desde los pies hasta la cabeza. Tensa y relaja cada zona durante unos segundos, observando las sensaciones y soltando tensión muscular acumulada.',
+                'tipo' => 'meditacion',
+                'tiempo_estimado_min' => 2.50,
+                'modulo' => 2,
+                'categoria_id' => $categoriaRespiracion->id,
+            ],
+            [
+                'nombre' => 'Meditación para ansiedad',
+                'descripcion' => 'Observa tus pensamientos sin juzgarlos y vuelve suavemente a la respiración cada vez que te distraigas. Usa frases breves de calma para estabilizar mente y cuerpo.',
+                'tipo' => 'meditacion',
+                'tiempo_estimado_min' => 2.13,
+                'modulo' => 3,
+                'categoria_id' => $categoriaRespiracion->id,
+            ],
+            [
+                'nombre' => 'Observación de pensamientos',
+                'descripcion' => 'Toma una postura cómoda y observa los pensamientos como si fueran nubes que pasan. No luches contra ellos: identifícalos, suéltalos y regresa al momento presente.',
+                'tipo' => 'meditacion',
+                'tiempo_estimado_min' => 1.45,
+                'modulo' => 4,
+                'categoria_id' => $categoriaRespiracion->id,
+            ],
+            [
+                'nombre' => 'Visualización de lugar seguro',
+                'descripcion' => 'Imagina un lugar que te transmita tranquilidad. Añade detalles visuales, sonidos y sensaciones físicas para profundizar el estado de calma y seguridad.',
+                'tipo' => 'meditacion',
+                'tiempo_estimado_min' => 2.26,
+                'modulo' => 5,
+                'categoria_id' => $categoriaRespiracion->id,
+            ],
+            [
+                'nombre' => 'Caminata ligera',
+                'descripcion' => 'Camina a un ritmo cómodo durante unos minutos, enfocándote en mantener un paso constante. Ideal para despejar la mente y reducir el estrés acumulado.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 10,
+                'modulo' => 1,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Caminata rápida',
+                'descripcion' => 'Aumenta ligeramente el ritmo de tu caminata para activar tu cuerpo. Mantén una postura erguida y respira de forma natural.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 15,
+                'modulo' => 1,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Trote ligero por intervalos',
+                'descripcion' => 'Alterna entre caminar y trotar suavemente. Por ejemplo, trota 1 minuto y camina 2 minutos para liberar tensión sin sobrecargar el cuerpo.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 12,
+                'modulo' => 2,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Estiramiento de cuello y hombros',
+                'descripcion' => 'Inclina suavemente la cabeza hacia los lados y realiza movimientos circulares con los hombros para liberar tensión acumulada.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 5,
+                'modulo' => 1,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Estiramiento de espalda baja',
+                'descripcion' => 'Realiza movimientos suaves inclinando el torso hacia adelante y hacia atrás para relajar la zona lumbar.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 5,
+                'modulo' => 1,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Rutina básica de sentadillas',
+                'descripcion' => 'Realiza sentadillas de forma controlada, manteniendo la espalda recta. Este ejercicio ayuda a liberar tensión y activar el cuerpo.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 8,
+                'modulo' => 2,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Lagartijas modificadas',
+                'descripcion' => 'Realiza lagartijas apoyando las rodillas si es necesario. Mantén el cuerpo alineado y ejecuta el movimiento de forma controlada.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 6,
+                'modulo' => 2,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Plancha abdominal',
+                'descripcion' => 'Mantén una posición de plancha durante algunos segundos, activando el abdomen y manteniendo el cuerpo recto.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 4,
+                'modulo' => 2,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Cardio rápido en casa',
+                'descripcion' => 'Realiza ejercicios como jumping jacks o rodillas altas durante intervalos cortos para liberar energía y reducir el estrés.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 5,
+                'modulo' => 3,
+                'categoria_id' => $categoriaEjercicio->id,
+            ],
+            [
+                'nombre' => 'Desplantes alternados',
+                'descripcion' => 'Da un paso al frente y baja el cuerpo formando un ángulo de 90 grados. Alterna piernas de forma controlada.',
+                'tipo' => 'ejercicio',
+                'tiempo_estimado_min' => 7,
+                'modulo' => 2,
+                'categoria_id' => $categoriaEjercicio->id,
             ],
         ];
 

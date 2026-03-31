@@ -17,6 +17,10 @@ class Actividad extends Model
         'categoria_id',
     ];
 
+    protected $casts = [
+        'tiempo_estimado_min' => 'float',
+    ];
+
     public function categoria()
     {
         return $this->belongsTo(Categoria::class);

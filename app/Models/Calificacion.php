@@ -12,11 +12,16 @@ class Calificacion extends Model
         'paciente_id',
         'test_id',
         'calificacion_general',
-        'nivel_estres_actual',
+        'categoria',
         'fecha_realizacion',
     ];
 
-    public function historial() {
+    protected $casts = [
+        'fecha_realizacion' => 'date',
+    ];
+
+    public function historial()
+    {
         return $this->hasMany(HistorialCalificacion::class);
     }
 }
