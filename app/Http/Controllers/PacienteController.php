@@ -61,24 +61,50 @@ class PacienteController extends Controller
             ], 404);
         }
 
-        $puntos = $paciente->calificaciones()
-            ->orderBy('fecha_realizacion', 'asc')
+        $puntos = DB::table('historial_calificaciones as hc')
+            ->join('calificaciones as c', 'c.id', '=', 'hc.calificacion_id')
+            ->where('c.paciente_id', $paciente->id)
+            ->orderBy('hc.fecha', 'asc')
+            ->select('hc.valor', 'hc.fecha')
             ->get()
-            ->map(function (Calificacion $calificacion) {
+            ->map(function ($item) {
                 return [
-                    'score' => (int) round($calificacion->calificacion_general),
-                    'created_at' => optional($calificacion->fecha_realizacion)->toIso8601String(),
-                    'source' => 'test',
+                    'score' => (int) round($item->valor),
+                    'created_at' => Carbon::parse($item->fecha)->startOfDay()->toIso8601String(),
+                    'source' => 'history',
                 ];
-            });
+            })
+            ->values();
+
+        // Backward-compatibility for legacy rows only stored in calificaciones.
+        if ($puntos->isEmpty()) {
+            $puntos = $paciente->calificaciones()
+                ->orderBy('fecha_realizacion', 'asc')
+                ->get()
+                ->map(function (Calificacion $calificacion) {
+                    return [
+                        'score' => (int) round($calificacion->calificacion_general),
+                        'created_at' => Carbon::parse($calificacion->fecha_realizacion)->startOfDay()->toIso8601String(),
+                        'source' => 'legacy',
+                    ];
+                })
+                ->values();
+        }
 
         $nivelActual = $paciente->nivel_estres_actual;
         if ($nivelActual !== null && $nivelActual > 0) {
+            $ultimoScore = $puntos->isNotEmpty() ? (int) ($puntos->last()['score'] ?? -1) : -1;
+
             $puntos->push([
                 'score' => (int) round($nivelActual),
                 'created_at' => now()->toIso8601String(),
                 'source' => 'current',
             ]);
+
+            // Avoid plotting the same score twice when current state already exists in history.
+            if ($ultimoScore === (int) round($nivelActual)) {
+                $puntos->pop();
+            }
         }
 
         return response()->json([

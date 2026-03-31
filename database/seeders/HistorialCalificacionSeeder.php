@@ -16,9 +16,9 @@ class HistorialCalificacionSeeder extends Seeder
         foreach ($calificaciones as $calificacion) {
 
             // Simulamos 8 semanas de evolución
-            for ($week = 0; $week < 8; $week++) {
+            for ($week = 0; $week < 2; $week++) {
 
-                $valor = rand(4, 9);
+                $valor = rand(12, 25);
 
                 HistorialCalificacion::create([
                     'calificacion_id' => $calificacion->id,

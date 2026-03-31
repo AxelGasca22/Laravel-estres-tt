@@ -116,41 +116,72 @@ class ProgresoActividadController extends Controller
         return $blobUrl . $separator . $queryParams;
     }
 
-    private function resolveVideoUrl(Actividad $actividad): ?string
+    private function resolveMediaAsset(Actividad $actividad): array
     {
-        $video = $actividad->recursos
-            ->where('tipo', 'video')
+        $activityType = strtolower((string) ($actividad->tipo ?? ''));
+        $preferredResourceType = (str_contains($activityType, 'meditaci') || str_contains($activityType, 'meditacion'))
+            ? 'audio'
+            : 'video';
+
+        $resource = $actividad->recursos
+            ->where('tipo', $preferredResourceType)
             ->sortBy('orden')
             ->first();
 
-        if (! $video || empty($video->blob_name)) {
-            return null;
+        if (! $resource) {
+            $fallbackType = $preferredResourceType === 'audio' ? 'video' : 'audio';
+            $resource = $actividad->recursos
+                ->where('tipo', $fallbackType)
+                ->sortBy('orden')
+                ->first();
         }
 
-        $blobName = trim((string) $video->blob_name);
+        if (! $resource || empty($resource->blob_name)) {
+            return [
+                'url' => null,
+                'type' => null,
+            ];
+        }
+
+        $blobName = trim((string) $resource->blob_name);
         if (filter_var($blobName, FILTER_VALIDATE_URL)) {
-            return $blobName;
+            return [
+                'url' => $blobName,
+                'type' => $resource->tipo,
+            ];
         }
 
         $baseUrl = $this->resolveAzureBaseUrl();
         if (empty($baseUrl)) {
-            return null;
+            return [
+                'url' => null,
+                'type' => $resource->tipo,
+            ];
         }
 
-        $container = trim((string) ($video->contenedor ?? ''), '/');
+        $container = trim((string) ($resource->contenedor ?? ''), '/');
         $blobPath = ltrim($blobName, '/');
 
         if ($container === '') {
-            return null;
+            return [
+                'url' => null,
+                'type' => $resource->tipo,
+            ];
         }
 
         if (str_ends_with($baseUrl, '/' . $container)) {
             $blobUrl = "$baseUrl/$blobPath";
-            return $this->signBlobUrl($blobUrl, $container, $blobPath);
+            return [
+                'url' => $this->signBlobUrl($blobUrl, $container, $blobPath),
+                'type' => $resource->tipo,
+            ];
         }
 
         $blobUrl = "$baseUrl/$container/$blobPath";
-        return $this->signBlobUrl($blobUrl, $container, $blobPath);
+        return [
+            'url' => $this->signBlobUrl($blobUrl, $container, $blobPath),
+            'type' => $resource->tipo,
+        ];
     }
 
     /**
@@ -198,13 +229,20 @@ class ProgresoActividadController extends Controller
                 return null;
             }
 
+            $media = $this->resolveMediaAsset($progreso->actividad);
+            $mediaUrl = $media['url'] ?? null;
+            $mediaType = $media['type'] ?? null;
+
             return [
                 'progreso_id' => $progreso->id,
                 'id' => $progreso->actividad->id,
                 'titulo' => $progreso->actividad->nombre,
                 'descripcion' => $progreso->actividad->descripcion,
                 'tipo' => $progreso->actividad->tipo,
-                'video_url' => $this->resolveVideoUrl($progreso->actividad),
+                'video_url' => $mediaUrl,
+                'audio_url' => $mediaType === 'audio' ? $mediaUrl : null,
+                'media_url' => $mediaUrl,
+                'media_type' => $mediaType,
                 'modulo' => $progreso->actividad->modulo,
                 'estado' => $progreso->estado,
                 'porcentaje' => $progreso->progreso_porcentaje,
@@ -256,6 +294,10 @@ class ProgresoActividadController extends Controller
             ], 404);
         }
 
+        $media = $this->resolveMediaAsset($progreso->actividad);
+        $mediaUrl = $media['url'] ?? null;
+        $mediaType = $media['type'] ?? null;
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -264,7 +306,10 @@ class ProgresoActividadController extends Controller
                 'titulo' => $progreso->actividad->nombre,
                 'descripcion' => $progreso->actividad->descripcion,
                 'tipo' => $progreso->actividad->tipo,
-                'video_url' => $this->resolveVideoUrl($progreso->actividad),
+                'video_url' => $mediaUrl,
+                'audio_url' => $mediaType === 'audio' ? $mediaUrl : null,
+                'media_url' => $mediaUrl,
+                'media_type' => $mediaType,
                 'modulo' => $progreso->actividad->modulo,
                 'estado' => $progreso->estado,
                 'porcentaje' => $progreso->progreso_porcentaje,
