@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // Autenticacion
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/resend-verification-email', [AuthController::class, 'resendVerificationEmail']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
