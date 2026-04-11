@@ -15,6 +15,7 @@ class Paciente extends Model
         'sexo',
         'nivel_estres_actual',
         'semestre',
+        'avatar',
     ];
 
     public function user()

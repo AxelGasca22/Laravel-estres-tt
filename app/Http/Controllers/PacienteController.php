@@ -14,6 +14,145 @@ use Illuminate\Support\Facades\DB;
 
 class PacienteController extends Controller
 {
+    private function connectionStringValue(string $key): ?string
+    {
+        $connectionString = (string) config('filesystems.disks.azure.connection_string', '');
+        if ($connectionString === '') {
+            return null;
+        }
+
+        $parts = explode(';', $connectionString);
+        foreach ($parts as $part) {
+            [$k, $v] = array_pad(explode('=', $part, 2), 2, null);
+            if ($k !== null && strcasecmp(trim($k), $key) === 0) {
+                return $v !== null ? trim($v) : null;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveAzureBaseUrl(): ?string
+    {
+        $configuredUrl = trim((string) config('filesystems.disks.azure.url', ''));
+        $connectionString = (string) config('filesystems.disks.azure.connection_string', '');
+
+        if ($connectionString !== '') {
+            preg_match('/AccountName=([^;]+)/i', $connectionString, $accountMatch);
+            preg_match('/EndpointSuffix=([^;]+)/i', $connectionString, $suffixMatch);
+
+            $accountName = $accountMatch[1] ?? null;
+            $endpointSuffix = $suffixMatch[1] ?? 'core.windows.net';
+
+            if (! empty($accountName)) {
+                return "https://{$accountName}.blob.{$endpointSuffix}";
+            }
+        }
+
+        if ($configuredUrl === '') {
+            return null;
+        }
+
+        return rtrim($configuredUrl, '/');
+    }
+
+    private function signBlobUrl(string $blobUrl, string $container, string $blobPath): string
+    {
+        $accountName = $this->connectionStringValue('AccountName');
+        $accountKey = $this->connectionStringValue('AccountKey');
+
+        if (empty($accountName) || empty($accountKey)) {
+            return $blobUrl;
+        }
+
+        $signedPermissions = 'r';
+        $signedStart = gmdate('Y-m-d\TH:i:s\Z', time() - 300);
+        $signedExpiry = gmdate('Y-m-d\TH:i:s\Z', time() + 2 * 60 * 60);
+        $signedProtocol = 'https';
+        $signedVersion = '2022-11-02';
+        $signedResource = 'b';
+
+        $canonicalizedResource = sprintf(
+            '/blob/%s/%s/%s',
+            $accountName,
+            trim($container, '/'),
+            ltrim(urldecode($blobPath), '/')
+        );
+
+        $stringToSign = implode("\n", [
+            $signedPermissions,
+            $signedStart,
+            $signedExpiry,
+            $canonicalizedResource,
+            '',
+            '',
+            $signedProtocol,
+            $signedVersion,
+            $signedResource,
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+        ]);
+
+        $decodedKey = base64_decode($accountKey, true);
+        if ($decodedKey === false) {
+            return $blobUrl;
+        }
+
+        $signature = base64_encode(hash_hmac('sha256', $stringToSign, $decodedKey, true));
+
+        $queryParams = http_build_query([
+            'sv' => $signedVersion,
+            'spr' => $signedProtocol,
+            'st' => $signedStart,
+            'se' => $signedExpiry,
+            'sr' => $signedResource,
+            'sp' => $signedPermissions,
+            'sig' => $signature,
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        $separator = str_contains($blobUrl, '?') ? '&' : '?';
+        return $blobUrl . $separator . $queryParams;
+    }
+
+    private function resolveAvatarUrlFromValue(?string $avatarValue): ?string
+    {
+        if ($avatarValue === null || trim($avatarValue) === '') {
+            return null;
+        }
+
+        if (filter_var($avatarValue, FILTER_VALIDATE_URL)) {
+            return $avatarValue;
+        }
+
+        $avatarNumber = (int) $avatarValue;
+        if ($avatarNumber < 0 || $avatarNumber > 15) {
+            return null;
+        }
+
+        $paddedNumber = str_pad((string) $avatarNumber, 2, '0', STR_PAD_LEFT);
+        $container = trim((string) env('AZURE_STORAGE_AVATAR_CONTAINER', 'avatares'), '/');
+        $baseUrl = $this->resolveAzureBaseUrl();
+
+        if (empty($baseUrl)) {
+            return null;
+        }
+
+        $blobPath = "avatar_{$paddedNumber}.png";
+
+        if (str_ends_with($baseUrl, '/' . $container)) {
+            $blobUrl = "$baseUrl/$blobPath";
+            return $this->signBlobUrl($blobUrl, $container, $blobPath);
+        }
+
+        $blobUrl = "$baseUrl/$container/$blobPath";
+        return $this->signBlobUrl($blobUrl, $container, $blobPath);
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -65,6 +204,8 @@ class PacienteController extends Controller
             'semestre' => $paciente->semestre,
             'sexo' => $paciente->sexo,
             'edad' => $paciente->edad,
+            'avatar' => $paciente->avatar,
+            'avatar_url' => $this->resolveAvatarUrlFromValue($paciente->avatar),
         ]);
     }
 
@@ -84,6 +225,7 @@ class PacienteController extends Controller
             'semestre' => 'sometimes|integer|min:1|max:8',
             'sexo' => 'sometimes|string|in:M,F,Otro',
             'edad' => 'sometimes|integer|min:0|max:120',
+            'avatar' => 'sometimes|string|max:255',
         ]);
 
         if (isset($validatedData['nombre'])) {
@@ -99,6 +241,9 @@ class PacienteController extends Controller
         if (isset($validatedData['edad'])) {
             $paciente->edad = $validatedData['edad'];
         }
+        if (isset($validatedData['avatar'])) {
+            $paciente->avatar = $validatedData['avatar'];
+        }
 
         $paciente->save();
 
@@ -110,7 +255,25 @@ class PacienteController extends Controller
                 'semestre' => $paciente->semestre,
                 'sexo' => $paciente->sexo,
                 'edad' => $paciente->edad,
+                'avatar' => $paciente->avatar,
+                'avatar_url' => $this->resolveAvatarUrlFromValue($paciente->avatar),
             ],
+        ]);
+    }
+
+    public function avatarUrl(Request $request, string $avatar)
+    {
+        $url = $this->resolveAvatarUrlFromValue($avatar);
+
+        if ($url === null) {
+            return response()->json([
+                'message' => 'Avatar no encontrado o no disponible.',
+            ], 404);
+        }
+
+        return response()->json([
+            'avatar' => $avatar,
+            'url' => $url,
         ]);
     }
 
