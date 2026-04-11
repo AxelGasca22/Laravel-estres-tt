@@ -16,7 +16,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
-    Route::post('/logout', [AuthController:: class, 'logout']);
+    Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/pacientes/perfil', [PacienteController::class, 'datosPaciente']);
     Route::put('/pacientes/perfil', [PacienteController::class, 'actualizarDatosPaciente']);
     Route::apiResource('/pacientes', PacienteController::class);
@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sesiones-ocupadas', [SesionController::class, 'bookedTimes']);
     Route::apiResource('/tests', RespuestaTestController::class);
     Route::apiResource('/actividades', ActividadController::class);
+    Route::patch('/actividades/{actividad}/modulo', [ActividadController::class, 'updateModulo']);
     Route::post('/respuestas-test', [RespuestaTestController::class]);
     Route::apiResource('/progreso-actividad', ProgresoActividadController::class);
 
