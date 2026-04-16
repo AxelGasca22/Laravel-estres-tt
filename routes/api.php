@@ -13,7 +13,26 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        $user = $request->user()->loadMissing([
+            'paciente.psicologo.user',
+            'psicologo',
+        ]);
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'email_verified_at' => $user->email_verified_at,
+            'paciente' => $user->paciente ? [
+                'id' => $user->paciente->id,
+                'psicologo_id' => $user->paciente->psicologo_id,
+                'psicologo' => $user->paciente->psicologo ? [
+                    'id' => $user->paciente->psicologo->id,
+                    'name' => $user->paciente->psicologo->user?->name,
+                ] : null,
+            ] : null,
+        ]);
     });
 
     Route::post('/logout', [AuthController::class, 'logout']);

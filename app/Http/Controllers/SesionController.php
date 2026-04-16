@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\SesionResource;
 use App\Models\Sesion;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class SesionController extends Controller
 {
@@ -13,22 +15,38 @@ class SesionController extends Controller
      */
     public function index(Request $request)
     {
-        $week = $request->query('week');
-        $user = auth()->user();
-        $psicologo = $user->psicologo;
-        $psicologoId = $psicologo->id;
+        $user = Auth::user();
 
+        if ($user?->role === 'paciente' && $user->paciente) {
+            $sesiones = Sesion::withTrashed()
+                ->with(['psicologo.user'])
+                ->where('paciente_id', $user->paciente->id)
+                ->orderByDesc('fecha')
+                ->orderByDesc('hora')
+                ->get();
+
+            return SesionResource::collection($sesiones);
+        }
+
+        $psicologo = $user?->psicologo;
+        if (!$psicologo) {
+            return response()->json([
+                'message' => 'No autorizado'
+            ], 403);
+        }
+
+        $week = $request->query('week', now()->toDateString());
         $start = Carbon::parse($week)->startOfWeek(Carbon::MONDAY);
         $end   = Carbon::parse($week)->endOfWeek(Carbon::FRIDAY);
 
         $sesiones = Sesion::with(['paciente.user'])
-            ->where('psicologo_id', $psicologoId)
+            ->where('psicologo_id', $psicologo->id)
             ->whereBetween('fecha', [$start->toDateString(), $end->toDateString()])
             ->orderBy('fecha')
             ->orderBy('hora')
             ->get();
 
-        return response()->json($sesiones);
+        return SesionResource::collection($sesiones);
     }
 
     /**
@@ -43,7 +61,7 @@ class SesionController extends Controller
             'observaciones' => ['nullable', 'string'],
         ]);
 
-        $user = auth()->user();
+        $user = Auth::user();
         $paciente = $user?->paciente;
 
         if (!$paciente) {
@@ -52,8 +70,41 @@ class SesionController extends Controller
             ], 403);
         }
 
+        if (!$paciente->psicologo_id) {
+            return response()->json([
+                'message' => 'No tienes un psicologo asignado'
+            ], 422);
+        }
+
+        if ((int) $paciente->psicologo_id !== (int) $request->psicologo_id) {
+            return response()->json([
+                'message' => 'Solo puedes agendar citas con tu psicologo asignado'
+            ], 422);
+        }
+
         $horaNormalizada = Carbon::createFromFormat('H:i', $request->hora)
             ->format('H:i:s');
+
+        $fechaSolicitada = Carbon::parse($request->fecha)->startOfDay();
+        $ultimaSesion = Sesion::query()
+            ->where('paciente_id', $paciente->id)
+            ->whereNull('deleted_at')
+            ->orderByDesc('fecha')
+            ->orderByDesc('hora')
+            ->first();
+
+        if ($ultimaSesion) {
+            $proximaFechaDisponible = Carbon::parse($ultimaSesion->fecha)
+                ->startOfDay()
+                ->addDays(7);
+
+            if ($fechaSolicitada->lt($proximaFechaDisponible)) {
+                return response()->json([
+                    'message' => 'Solo puedes agendar una nueva cita despues de 7 dias de tu ultima cita agendada',
+                    'next_available_date' => $proximaFechaDisponible->toDateString(),
+                ], 422);
+            }
+        }
 
         $exists = Sesion::where('psicologo_id', $request->psicologo_id)
             ->where('fecha', $request->fecha)
@@ -91,6 +142,14 @@ class SesionController extends Controller
             'fecha' => ['required', 'date'],
         ]);
 
+        $user = Auth::user();
+        $paciente = $user?->paciente;
+        if ($paciente && (int) $paciente->psicologo_id !== (int) $request->psicologo_id) {
+            return response()->json([
+                'message' => 'Solo puedes consultar horarios de tu psicologo asignado'
+            ], 403);
+        }
+
         $times = Sesion::where('psicologo_id', $request->psicologo_id)
             ->where('fecha', $request->fecha)
             ->orderBy('hora')
@@ -118,6 +177,13 @@ class SesionController extends Controller
      */
     public function update(Request $request, Sesion $sesion)
     {
+        $user = Auth::user();
+        if ($user?->role !== 'psicologo' || !$user->psicologo || $sesion->psicologo_id !== $user->psicologo->id) {
+            return response()->json([
+                'message' => 'No autorizado'
+            ], 403);
+        }
+
         $request->validate([
             'hora' => ['required', 'regex:/^\d{2}:\d{2}$/'], // HH:mm
             'fecha' => ['sometimes', 'date'],
@@ -129,16 +195,29 @@ class SesionController extends Controller
         $horaNormalizada = Carbon::createFromFormat('H:i', $request->hora)
             ->format('H:i:s');
 
+        $fechaObjetivo = $request->fecha ?? $sesion->fecha;
+        $exists = Sesion::where('psicologo_id', $sesion->psicologo_id)
+            ->where('fecha', $fechaObjetivo)
+            ->where('hora', $horaNormalizada)
+            ->where('id', '!=', $sesion->id)
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'message' => 'Ese horario ya esta ocupado'
+            ], 422);
+        }
+
         $sesion->update([
             'hora' => $horaNormalizada,
-            'fecha' => $request->fecha ?? $sesion->fecha,
+            'fecha' => $fechaObjetivo,
             'tipo_sesion' => $request->modalidad,
             'observaciones' => $request->notas ?? $sesion->observaciones,
         ]);
 
         return response()->json([
             'message' => 'Cita actualizada correctamente',
-            'sesion' => $sesion->fresh(['paciente.user']),
+            'sesion' => new SesionResource($sesion->fresh(['paciente.user', 'psicologo.user'])),
         ]);
     }
 
@@ -147,7 +226,8 @@ class SesionController extends Controller
      */
     public function destroy(Sesion $sesion)
     {
-        if ($sesion->psicologo_id !== auth()->user()->psicologo->id) {
+        $user = Auth::user();
+        if ($user?->role !== 'psicologo' || !$user->psicologo || $sesion->psicologo_id !== $user->psicologo->id) {
             return response()->json([
                 'message' => 'No autorizado'
             ], 403);
