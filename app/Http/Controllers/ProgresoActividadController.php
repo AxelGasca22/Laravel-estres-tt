@@ -199,14 +199,21 @@ class ProgresoActividadController extends Controller
             ], 404);
         }
 
-        // Si el paciente no tiene asignadas actividades del módulo 1,
-        // se crean automáticamente como pendientes.
-        $actividadesModuloUno = Actividad::where('modulo', 1)->get();
-        if ($actividadesModuloUno->isNotEmpty()) {
+        // Sincronizar actividades faltantes para el paciente.
+        // Antes solo se generaban progresos para módulo 1, lo que dejaba
+        // vacíos los módulos superiores aunque existieran en el catálogo.
+        $catalogoDisponible = Actividad::query()
+            ->when(
+                is_null($paciente->psicologo_id),
+                fn($query) => $query->where('modulo', 1)
+            )
+            ->get();
+
+        if ($catalogoDisponible->isNotEmpty()) {
             $asignadasIds = ProgresoActividad::where('paciente_id', $paciente->id)
                 ->pluck('actividad_id');
 
-            $faltantes = $actividadesModuloUno->whereNotIn('id', $asignadasIds);
+            $faltantes = $catalogoDisponible->whereNotIn('id', $asignadasIds);
 
             foreach ($faltantes as $actividad) {
                 ProgresoActividad::create([
