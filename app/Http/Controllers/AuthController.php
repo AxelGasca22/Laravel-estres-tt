@@ -32,6 +32,7 @@ class AuthController extends Controller
             'fecha_nacimiento' => ['required', 'date', 'before:today'],
             'sexo' => ['nullable', 'string', 'in:Femenino,Masculino,Prefiero no decir,F,M,Otro'],
             'semestre' => ['nullable', 'integer', 'min:1', 'max:8'],
+            'numero_boleta' => ['required', 'string', 'digits:10', 'unique:pacientes,numero_boleta'],
         ]);
 
         if ($validator->fails()) {
@@ -68,6 +69,7 @@ class AuthController extends Controller
             'sexo' => $sexo,
             'edad' => $edad,
             'semestre' => $data['semestre'] ?? null,
+            'numero_boleta' => $data['numero_boleta'],
         ]);
 
         // correo al paciente
