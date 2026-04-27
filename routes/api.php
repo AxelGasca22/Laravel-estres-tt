@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActividadController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\ProgresoActividadController;
@@ -56,6 +57,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Historial de estrés del paciente autenticado
     Route::get('/pacientes/me/estres-registros', [PacienteController::class, 'estresRegistros']);
+
+    // Estadisticas Admin
+    Route::get('/admin/estadisticas', [AdminController::class, 'index']);
 });
 
 // Autenticacion
