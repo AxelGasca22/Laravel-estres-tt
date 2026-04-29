@@ -176,6 +176,9 @@ class PacienteController extends Controller
                 ->get();
 
             $pacientesSinAsignar = Paciente::whereNull('psicologo_id')
+                ->whereHas('user', function ($q) {
+                    $q->whereNotNull('email_verified_at');
+                })
                 ->with('user')
                 ->get();
 

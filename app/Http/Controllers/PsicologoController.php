@@ -165,6 +165,13 @@ class PsicologoController extends Controller
         $psicologo = Psicologo::findOrFail($id);
         $user = $psicologo->user;
 
+        // Desasignar pacientes asociados al psicólogo eliminado
+        $pacientes = Paciente::where('psicologo_id', $psicologo->id)->get();
+        foreach ($pacientes as $paciente) {
+            $paciente->psicologo_id = null;
+            $paciente->save();
+        }
+
         $user->delete();
         $psicologo->delete();
 
@@ -188,7 +195,7 @@ class PsicologoController extends Controller
             ->whereYear('created_at', $now->year)
             ->count();
 
-        // 2. Sesiones 
+        // Sesiones 
         $sesionesMes = Sesion::where('psicologo_id', $psicologoId)
             ->whereMonth('fecha', $now->month)
             ->whereYear('fecha', $now->year)
@@ -200,7 +207,7 @@ class PsicologoController extends Controller
             ->whereYear('fecha', $mesPasado->year)
             ->count();
 
-        // 3. Progreso de Actividades (Haciendo join con pacientes del psicólogo)
+        // Progreso de Actividades
         $pacientesIds = Paciente::where('psicologo_id', $psicologoId)->pluck('id');
         
         // estado tiene 'completada' y 'pendiente'
@@ -215,7 +222,7 @@ class PsicologoController extends Controller
         $totalActividades = $actividadesCompletadas + $actividadesPendientes;
         $porcentajeCompletadas = $totalActividades > 0 ? round(($actividadesCompletadas / $totalActividades) * 100) : 0;
 
-        // 4. Niveles de Estrés 
+        // Niveles de Estrés 
         $estresBajo = Paciente::where('psicologo_id', $psicologoId)->where('nivel_estres_actual', '<=', 19)->count();
         $estresMedio = Paciente::where('psicologo_id', $psicologoId)->whereBetween('nivel_estres_actual', [20, 25])->count();
         $estresAlto = Paciente::where('psicologo_id', $psicologoId)->where('nivel_estres_actual', '>=', 26)->count();
@@ -242,7 +249,7 @@ class PsicologoController extends Controller
                 'bajo' => $estresBajo,
                 'medio' => $estresMedio,
                 'alto' => $estresAlto,
-                'total' => $totalPacientes > 0 ? $totalPacientes : 1 // Para evitar división por 0 en el frontend
+                'total' => $totalPacientes > 0 ? $totalPacientes : 1
             ],
             'alertas_criticas' => $alertasCriticas
         ]);
