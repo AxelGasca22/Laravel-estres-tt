@@ -8,10 +8,11 @@
 <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #F0F4F8; margin: 0; padding: 40px 0;">
     
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-        
         <tr>
-            <td style="background-color: #A2D9CE; padding: 40px 20px; text-align: center;">
-                <img src="../../../assets/Isotipo-Logo Final-04.svg" alt="Vidazen" style="width: 80px; height: auto;">
+            <td style="background: linear-gradient(135deg, #85C1E9 0%, #A2D9CE 100%); padding: 40px 20px; text-align: center;">
+                <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 600; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(44,62,80,0.1);">
+                    Bienvenido a Vidazen
+                </h1>
             </td>
         </tr>
 

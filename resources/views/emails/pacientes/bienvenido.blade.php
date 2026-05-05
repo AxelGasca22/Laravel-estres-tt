@@ -11,7 +11,6 @@
         
         <tr>
             <td style="background: linear-gradient(135deg, #85C1E9 0%, #A2D9CE 100%); padding: 50px 20px; text-align: center;">
-                <img src="../../../assets/Isotipo-Logo Final-04.svg" alt="VidaZen" style="width: 70px; height: auto; margin-bottom: 15px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
                 <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 600; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(44,62,80,0.1);">
                     Tu viaje comienza aquí
                 </h1>
