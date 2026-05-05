@@ -53,4 +53,9 @@ class Paciente extends Model
     {
         return $this->hasMany(ProgresoActividad::class, 'paciente_id');
     }
+
+    public function respuestasJournaling()
+    {
+        return $this->hasMany(RespuestaJournaling::class);
+    }
 }

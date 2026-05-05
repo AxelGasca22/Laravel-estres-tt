@@ -35,4 +35,9 @@ class Actividad extends Model
     {
         return $this->hasMany(RecursoActividad::class, 'actividad_id');
     }
+
+    public function respuestasJournaling()
+    {
+        return $this->hasMany(RespuestaJournaling::class);
+    }
 }

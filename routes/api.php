@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\ProgresoActividadController;
 use App\Http\Controllers\PsicologoController;
+use App\Http\Controllers\RespuestaJournalingController;
 use App\Http\Controllers\RespuestaTestController;
 use App\Http\Controllers\SesionController;
 use App\Http\Controllers\TestController;
@@ -60,6 +61,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Estadisticas Admin
     Route::get('/admin/estadisticas', [AdminController::class, 'index']);
+
+    // Journaling - Paciente
+    Route::get('/respuestas-journaling', [RespuestaJournalingController::class, 'index']);
+    Route::post('/respuestas-journaling', [RespuestaJournalingController::class, 'store']);
+    Route::get('/respuestas-journaling/{id}', [RespuestaJournalingController::class, 'show']);
+    Route::delete('/respuestas-journaling/{id}', [RespuestaJournalingController::class, 'destroy']);
+
+    // Journaling - Psicólogo
+    Route::get('/psicologo/pacientes/{paciente}/journaling', [RespuestaJournalingController::class, 'pacienteJournaling']);
+    Route::get('/psicologo/respuestas-journaling/{id}', [RespuestaJournalingController::class, 'showPsicologo']);
 });
 
 // Autenticacion
