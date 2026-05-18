@@ -167,13 +167,16 @@ class PacienteController extends Controller
                 ->where('fecha', '>', now())
                 ->count();
 
+            $perPage = $request->input('per_page', 10);
+            $page = $request->input('page', 1);
+
             $pacientes = $psicologo->pacientes()
                 ->with([
                     'user',
                     'ultimaSesion',
                     'progresoActividad',
                 ])
-                ->get();
+                ->paginate($perPage, ['*'], 'page', $page);
 
             $pacientesSinAsignar = Paciente::whereNull('psicologo_id')
                 ->whereHas('user', function ($q) {
