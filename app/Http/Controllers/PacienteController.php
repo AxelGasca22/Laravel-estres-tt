@@ -471,6 +471,24 @@ class PacienteController extends Controller
         // }
     }
 
+    public function desasignarPsicologo(Request $request)
+    {
+        $paciente = $request->paciente_id ? Paciente::find($request->paciente_id) : null;
+
+        if (!$paciente) {
+            return response()->json([
+                'message' => 'Paciente no encontrado para el usuario autenticado',
+            ], 404);
+        }
+
+        $paciente->psicologo_id = null;
+        $paciente->save();
+
+        return response()->json([
+            'message' => 'Psicólogo desasignado correctamente',
+        ]);
+    }
+
     /**
      * Update the specified resource in storage.
      */
