@@ -51,7 +51,7 @@ class PsicologoController extends Controller
      */
     public function store(Request $request)
     {
-        if(!$request->input('role') === 'admin') {
+        if (!$request->input('role') === 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -61,10 +61,10 @@ class PsicologoController extends Controller
             'password' => [
                 'required',
                 'string',
-                'min:8',            
-                'regex:/[a-z]/',     
-                'regex:/[A-Z]/',   
-                'regex:/[0-9]/',    
+                'min:8',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
                 'regex:/[@$!%*?&.]/',
             ],
         ]);
@@ -91,9 +91,11 @@ class PsicologoController extends Controller
 
     public function confirmarCuenta(Request $request, User $user)
     {
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
         // Verifica si la firma de la URL es válida y no ha expirado
         if (! $request->hasValidSignature()) {
-            abort(401, 'El enlace de confirmación es inválido o ha expirado.');
+            return redirect()->away($frontendUrl . '/enlace-expirado?tipo=psicologo');
         }
 
         // Guardar en la base de datos que ya está confirmado
@@ -103,8 +105,6 @@ class PsicologoController extends Controller
         }
 
         // Redirigir al frontend de React
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
-        
         return redirect()->away($frontendUrl . '/cuenta-confirmada');
     }
 
@@ -121,7 +121,7 @@ class PsicologoController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        if(!$request->input('role') === 'admin') {
+        if (!$request->input('role') === 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -134,10 +134,10 @@ class PsicologoController extends Controller
             'password' => [
                 'nullable',
                 'string',
-                'min:8',            
-                'regex:/[a-z]/',     
-                'regex:/[A-Z]/',   
-                'regex:/[0-9]/',    
+                'min:8',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
                 'regex:/[@$!%*?&.]/',
             ],
         ]);
@@ -188,7 +188,7 @@ class PsicologoController extends Controller
 
         $psicologoId = $user->psicologo->id;
         $now = Carbon::now();
-        
+
         $totalPacientes = Paciente::where('psicologo_id', $psicologoId)->count();
         $pacientesNuevosMes = Paciente::where('psicologo_id', $psicologoId)
             ->whereMonth('created_at', $now->month)
@@ -200,7 +200,7 @@ class PsicologoController extends Controller
             ->whereMonth('fecha', $now->month)
             ->whereYear('fecha', $now->year)
             ->count();
-        
+
         $mesPasado = $now->copy()->subMonth();
         $sesionesMesPasado = Sesion::where('psicologo_id', $psicologoId)
             ->whereMonth('fecha', $mesPasado->month)
@@ -209,12 +209,12 @@ class PsicologoController extends Controller
 
         // Progreso de Actividades
         $pacientesIds = Paciente::where('psicologo_id', $psicologoId)->pluck('id');
-        
+
         // estado tiene 'completada' y 'pendiente'
         $actividadesCompletadas = ProgresoActividad::whereIn('paciente_id', $pacientesIds)
             ->where('estado', 'completado')
             ->count();
-            
+
         $actividadesPendientes = ProgresoActividad::whereIn('paciente_id', $pacientesIds)
             ->where('estado', 'en_progreso')
             ->count();

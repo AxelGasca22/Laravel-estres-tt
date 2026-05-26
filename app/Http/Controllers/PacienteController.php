@@ -360,16 +360,16 @@ class PacienteController extends Controller
      */
     public function confirmarCuenta(Request $request, User $user)
     {
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
         if (! $request->hasValidSignature()) {
-            return response('El enlace de confirmación es inválido o ha expirado.', 401);
+            return redirect()->away($frontendUrl . '/enlace-expirado?tipo=paciente');
         }
 
         if (is_null($user->email_verified_at)) {
             $user->email_verified_at = now();
             $user->save();
         }
-
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
 
         return redirect()->away($frontendUrl . '/cuenta-confirmada-paciente');
     }
