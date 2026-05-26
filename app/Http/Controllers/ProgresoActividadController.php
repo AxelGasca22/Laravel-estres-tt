@@ -203,6 +203,10 @@ class ProgresoActividadController extends Controller
         // Antes solo se generaban progresos para módulo 1, lo que dejaba
         // vacíos los módulos superiores aunque existieran en el catálogo.
         $catalogoDisponible = Actividad::query()
+            ->where(function ($query) use ($paciente) {
+                $query->whereNull('paciente_id')
+                    ->orWhere('paciente_id', $paciente->id);
+            })
             ->when(
                 is_null($paciente->psicologo_id),
                 fn($query) => $query->where('modulo', 1)

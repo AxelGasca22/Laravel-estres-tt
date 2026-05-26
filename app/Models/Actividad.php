@@ -15,6 +15,7 @@ class Actividad extends Model
         'tiempo_estimado_min',
         'modulo',
         'categoria_id',
+        'paciente_id',
     ];
 
     protected $casts = [
@@ -24,6 +25,11 @@ class Actividad extends Model
     public function categoria()
     {
         return $this->belongsTo(Categoria::class);
+    }
+
+    public function paciente()
+    {
+        return $this->belongsTo(Paciente::class, 'paciente_id');
     }
 
     public function progresos()

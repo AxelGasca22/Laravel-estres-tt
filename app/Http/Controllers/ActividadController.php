@@ -189,6 +189,71 @@ class ActividadController extends Controller
         return 1.0;
     }
 
+    private function resolveCurrentModuloForPaciente(mixed $pacienteId): int
+    {
+        if (! is_numeric($pacienteId)) {
+            return 1;
+        }
+
+        $pacienteId = (int) $pacienteId;
+
+        $progresosPorModulo = ProgresoActividad::query()
+            ->join('actividades', 'actividades.id', '=', 'progreso_actividad.actividad_id')
+            ->where('progreso_actividad.paciente_id', $pacienteId)
+            ->select('actividades.modulo as modulo', 'progreso_actividad.estado as estado')
+            ->orderBy('actividades.modulo')
+            ->get();
+
+        if ($progresosPorModulo->isNotEmpty()) {
+            $resumenPorModulo = $progresosPorModulo
+                ->groupBy('modulo')
+                ->map(function ($items) {
+                    $total = $items->count();
+                    $completadas = $items->where('estado', 'completado')->count();
+
+                    return [
+                        'total' => $total,
+                        'completadas' => $completadas,
+                    ];
+                })
+                ->sortKeys();
+
+            foreach ($resumenPorModulo as $modulo => $resumen) {
+                if (($resumen['completadas'] ?? 0) < ($resumen['total'] ?? 0)) {
+                    return max(1, (int) $modulo);
+                }
+            }
+
+            $ultimoModulo = $resumenPorModulo->keys()->last();
+            if (is_numeric($ultimoModulo) && (int) $ultimoModulo > 0) {
+                return (int) $ultimoModulo;
+            }
+        }
+
+        $moduloReciente = ProgresoActividad::query()
+            ->join('actividades', 'actividades.id', '=', 'progreso_actividad.actividad_id')
+            ->where('progreso_actividad.paciente_id', $pacienteId)
+            ->orderByDesc('progreso_actividad.updated_at')
+            ->value('actividades.modulo');
+
+        if (is_numeric($moduloReciente) && (int) $moduloReciente > 0) {
+            return (int) $moduloReciente;
+        }
+
+        return 1;
+    }
+
+    private function resolveModuloForStore(Request $request): int
+    {
+        $pacienteId = $request->input('paciente_id');
+        if ($pacienteId !== null && $pacienteId !== '') {
+            return $this->resolveCurrentModuloForPaciente($pacienteId);
+        }
+
+        $requestedModulo = (int) $request->input('modulo', 1);
+        return $requestedModulo > 0 ? $requestedModulo : 1;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -198,10 +263,18 @@ class ActividadController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        $pacienteId = $request->input('paciente_id');
+
         $actividades = Actividad::withCount('progresos')
             ->with(['recursos' => function ($query) {
                 $query->select('id', 'actividad_id', 'tipo', 'blob_name', 'contenedor', 'orden');
             }])
+            ->when($pacienteId, function ($query) use ($pacienteId) {
+                $query->where(function ($scope) use ($pacienteId) {
+                    $scope->whereNull('paciente_id')
+                        ->orWhere('paciente_id', (int) $pacienteId);
+                });
+            })
             ->orderBy('modulo')
             ->orderBy('nombre')
             ->get()
@@ -239,8 +312,9 @@ class ActividadController extends Controller
         $actividad->descripcion = $request->input('descripcion');
         $actividad->tipo = $request->input('categoria');
         $actividad->tiempo_estimado_min = $this->parseDurationToMinutes($request->input('duracion'));
-        $actividad->modulo = (int) $request->input('modulo', 1);
+        $actividad->modulo = $this->resolveModuloForStore($request);
         $actividad->categoria_id = '1';
+        $actividad->paciente_id = $request->input('paciente_id');
         $actividad->save();
 
         $progresoActividad = new ProgresoActividad();
@@ -283,7 +357,15 @@ class ActividadController extends Controller
         $actividad->descripcion = $request->input('descripcion');
         $actividad->tipo = $request->input('categoria');
         $actividad->tiempo_estimado_min = $this->parseDurationToMinutes($request->input('duracion'));
-        $actividad->modulo = (int) $request->input('modulo', 1);
+
+        $requestedModulo = $request->input('modulo');
+        if ($requestedModulo !== null && $requestedModulo !== '') {
+            $parsedModulo = (int) $requestedModulo;
+            if ($parsedModulo > 0) {
+                $actividad->modulo = $parsedModulo;
+            }
+        }
+
         $actividad->save();
 
         return response()->json(['message' => 'Actividad actualizada exitosamente']);
