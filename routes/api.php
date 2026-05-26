@@ -82,12 +82,10 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/verificar-psicologo/{user}', [PsicologoController::class, 'confirmarCuenta'])
-    ->name('psicologo.verify')
-    ->middleware('signed');
+    ->name('psicologo.verify');
 
 Route::get('/verificar-paciente/{user}', [PacienteController::class, 'confirmarCuenta'])
-    ->name('paciente.verify')
-    ->middleware('signed');
+    ->name('paciente.verify');
 
 // Public endpoint for psychologists list (mobile app)
 Route::get('/psicologos-public', [PsicologoController::class, 'publicIndex']);
