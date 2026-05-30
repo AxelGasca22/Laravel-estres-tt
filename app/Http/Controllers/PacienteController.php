@@ -427,6 +427,25 @@ class PacienteController extends Controller
             ? round(($actividadesCompletadas / $totalActividades) * 100)
             : 0;
 
+        $resumenModulos = $actividades
+            ->filter(fn($progreso) => $progreso->actividad !== null)
+            ->groupBy(fn($progreso) => (int) ($progreso->actividad->modulo ?? 0))
+            ->map(function ($items, $modulo) {
+                $totalModulo = $items->count();
+                $promedioModulo = $totalModulo > 0
+                    ? round((float) $items->avg('progreso_porcentaje'))
+                    : 0;
+
+                return [
+                    'modulo' => (int) $modulo,
+                    'porcentaje' => $promedioModulo,
+                    'actividades_total' => $totalModulo,
+                    'actividades_completadas' => $items->where('estado', 'completado')->count(),
+                ];
+            })
+            ->sortBy('modulo')
+            ->values();
+
         // 5. Estructurar respuesta JSON para el Frontend
         return response()->json([
             'perfil' => [
@@ -447,11 +466,13 @@ class PacienteController extends Controller
                 'total_sesiones' => $totalSesiones,
                 'proxima_sesion' => $proximaSesion ? $proximaSesion->fecha . ' ' . $proximaSesion->hora : null,
                 'tareas_completadas_porcentaje' => $porcentajeGlobal,
-                'total_tareas' => $totalActividades
+                'total_tareas' => $totalActividades,
+                'modulos_completados' => $resumenModulos,
             ],
             'modulos' => $actividades->map(function ($progreso) {
                 return [
                     'id' => $progreso->id,
+                    'modulo' => (int) ($progreso->actividad->modulo ?? 0),
                     'nombre' => $progreso->actividad->nombre,
                     'progreso' => $progreso->progreso_porcentaje,
                     'estado' => $progreso->estado,
