@@ -210,17 +210,37 @@ class PsicologoController extends Controller
         // Progreso de Actividades
         $pacientesIds = Paciente::where('psicologo_id', $psicologoId)->pluck('id');
 
-        // estado tiene 'completada' y 'pendiente'
+        // Conteos globales de actividades por estado
         $actividadesCompletadas = ProgresoActividad::whereIn('paciente_id', $pacientesIds)
             ->where('estado', 'completado')
             ->count();
 
         $actividadesPendientes = ProgresoActividad::whereIn('paciente_id', $pacientesIds)
-            ->where('estado', 'en_progreso')
+            ->whereIn('estado', ['pendiente', 'en_progreso'])
             ->count();
 
-        $totalActividades = $actividadesCompletadas + $actividadesPendientes;
-        $porcentajeCompletadas = $totalActividades > 0 ? round(($actividadesCompletadas / $totalActividades) * 100) : 0;
+        // Promedio de porcentaje completado por paciente.
+        // Para cada paciente: completadas / total_asignadas * 100, luego promedio.
+        $resumenPorPaciente = ProgresoActividad::whereIn('paciente_id', $pacientesIds)
+            ->selectRaw("paciente_id, COUNT(*) as total, SUM(CASE WHEN estado = 'completado' THEN 1 ELSE 0 END) as completadas")
+            ->groupBy('paciente_id')
+            ->get()
+            ->keyBy('paciente_id');
+
+        $sumaPorcentajes = 0;
+        foreach ($pacientesIds as $pacienteId) {
+            $resumen = $resumenPorPaciente->get($pacienteId);
+            $totalPaciente = (int) ($resumen->total ?? 0);
+            $completadasPaciente = (int) ($resumen->completadas ?? 0);
+
+            $sumaPorcentajes += $totalPaciente > 0
+                ? ($completadasPaciente / $totalPaciente) * 100
+                : 0;
+        }
+
+        $porcentajeCompletadas = $totalPacientes > 0
+            ? round($sumaPorcentajes / $totalPacientes)
+            : 0;
 
         // Niveles de Estrés 
         $estresBajo = Paciente::where('psicologo_id', $psicologoId)->where('nivel_estres_actual', '<=', 19)->count();
