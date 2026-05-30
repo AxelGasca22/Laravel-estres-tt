@@ -446,6 +446,15 @@ class PacienteController extends Controller
             ->sortBy('modulo')
             ->values();
 
+        $moduloActual = null;
+        if ($resumenModulos->isNotEmpty()) {
+            $moduloEnCurso = $resumenModulos->first(function ($item) {
+                return ($item['actividades_completadas'] ?? 0) < ($item['actividades_total'] ?? 0);
+            });
+
+            $moduloActual = $moduloEnCurso['modulo'] ?? $resumenModulos->last()['modulo'];
+        }
+
         // 5. Estructurar respuesta JSON para el Frontend
         return response()->json([
             'perfil' => [
@@ -468,6 +477,7 @@ class PacienteController extends Controller
                 'tareas_completadas_porcentaje' => $porcentajeGlobal,
                 'total_tareas' => $totalActividades,
                 'modulos_completados' => $resumenModulos,
+                'modulo_actual' => $moduloActual,
             ],
             'modulos' => $actividades->map(function ($progreso) {
                 return [
