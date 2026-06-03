@@ -269,6 +269,13 @@ class ActividadController extends Controller
             ->with(['recursos' => function ($query) {
                 $query->select('id', 'actividad_id', 'tipo', 'blob_name', 'contenedor', 'orden');
             }])
+            ->with(['progresos' => function ($query) use ($pacienteId) {
+                $query->select('id', 'actividad_id', 'paciente_id', 'estado', 'updated_at')
+                    ->when($pacienteId, function ($scope) use ($pacienteId) {
+                        $scope->where('paciente_id', (int) $pacienteId);
+                    })
+                    ->orderByDesc('updated_at');
+            }])
             ->when($pacienteId, function ($query) use ($pacienteId) {
                 $query->where(function ($scope) use ($pacienteId) {
                     $scope->whereNull('paciente_id')
@@ -279,6 +286,8 @@ class ActividadController extends Controller
             ->orderBy('nombre')
             ->get()
             ->map(function (Actividad $actividad) {
+                $progresoPaciente = $actividad->progresos->first();
+                $estadoPaciente = $progresoPaciente?->estado;
                 return [
                     'id' => $actividad->id,
                     'nombre' => $actividad->nombre,
@@ -288,6 +297,8 @@ class ActividadController extends Controller
                     'modulo' => $actividad->modulo,
                     'audio_url' => $this->resolveAudioUrl($actividad),
                     'asignaciones_total' => $actividad->progresos_count,
+                    'estado_paciente' => $estadoPaciente,
+                    'completada' => $estadoPaciente === 'completado',
                     'updated_at' => optional($actividad->updated_at)->toIso8601String(),
                 ];
             });
@@ -379,7 +390,23 @@ class ActividadController extends Controller
 
         $validated = $request->validate([
             'modulo' => ['required', 'integer', 'min:1', 'max:20'],
+            'paciente_id' => ['nullable', 'integer', 'min:1'],
         ]);
+
+        if (! empty($validated['paciente_id'])) {
+            $isCompletedForPaciente = ProgresoActividad::query()
+                ->where('actividad_id', (int) $id)
+                ->where('paciente_id', (int) $validated['paciente_id'])
+                ->where('estado', 'completado')
+                ->exists();
+
+            if ($isCompletedForPaciente) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede mover de módulo una actividad ya completada por este paciente.',
+                ], 422);
+            }
+        }
 
         $actividad = Actividad::findOrFail($id);
         $actividad->modulo = (int) $validated['modulo'];
