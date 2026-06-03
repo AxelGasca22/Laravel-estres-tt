@@ -299,13 +299,15 @@ class PacienteController extends Controller
         $puntos = DB::table('historial_calificaciones as hc')
             ->join('calificaciones as c', 'c.id', '=', 'hc.calificacion_id')
             ->where('c.paciente_id', $paciente->id)
-            ->orderBy('hc.fecha', 'asc')
-            ->select('hc.valor', 'hc.fecha')
+            ->orderBy('hc.created_at', 'asc')
+            ->orderBy('hc.id', 'asc')
+            ->select('hc.valor', 'hc.fecha', 'hc.created_at')
             ->get()
             ->map(function ($item) {
+                $timestamp = $item->created_at ?? $item->fecha;
                 return [
                     'score' => (int) round($item->valor),
-                    'created_at' => Carbon::parse($item->fecha)->startOfDay()->toIso8601String(),
+                    'created_at' => Carbon::parse($timestamp)->toIso8601String(),
                     'source' => 'history',
                 ];
             })
@@ -314,12 +316,14 @@ class PacienteController extends Controller
         // Backward-compatibility for legacy rows only stored in calificaciones.
         if ($puntos->isEmpty()) {
             $puntos = $paciente->calificaciones()
-                ->orderBy('fecha_realizacion', 'asc')
+                ->orderBy('created_at', 'asc')
+                ->orderBy('id', 'asc')
                 ->get()
                 ->map(function (Calificacion $calificacion) {
+                    $timestamp = $calificacion->created_at ?? $calificacion->fecha_realizacion;
                     return [
                         'score' => (int) round($calificacion->calificacion_general),
-                        'created_at' => Carbon::parse($calificacion->fecha_realizacion)->startOfDay()->toIso8601String(),
+                        'created_at' => Carbon::parse($timestamp)->toIso8601String(),
                         'source' => 'legacy',
                     ];
                 })
