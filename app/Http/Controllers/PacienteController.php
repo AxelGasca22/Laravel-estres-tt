@@ -161,10 +161,17 @@ class PacienteController extends Controller
         if ($request->input('role') === 'psicologo') {
             $user = auth()->user();
             $psicologo = $user->psicologo;
+            $now = now();
             $totalSesionesProximas = Sesion::whereHas('paciente', function ($q) use ($psicologo) {
                 $q->where('psicologo_id', $psicologo->id);
             })
-                ->where('fecha', '>', now())
+                ->where(function ($query) use ($now) {
+                    $query->whereDate('fecha', '>', $now->toDateString())
+                        ->orWhere(function ($todayQuery) use ($now) {
+                            $todayQuery->whereDate('fecha', $now->toDateString())
+                                ->whereTime('hora', '>=', $now->format('H:i:s'));
+                        });
+                })
                 ->count();
 
             $perPage = $request->input('per_page', 10);
@@ -410,9 +417,16 @@ class PacienteController extends Controller
 
         // 3. Estadísticas de Sesiones
         $totalSesiones = Sesion::where('paciente_id', $id)->count();
+        $now = now();
 
         $proximaSesion = Sesion::where('paciente_id', $id)
-            ->where('fecha', '>=', now())
+            ->where(function ($query) use ($now) {
+                $query->whereDate('fecha', '>', $now->toDateString())
+                    ->orWhere(function ($todayQuery) use ($now) {
+                        $todayQuery->whereDate('fecha', $now->toDateString())
+                            ->whereTime('hora', '>=', $now->format('H:i:s'));
+                    });
+            })
             ->orderBy('fecha', 'asc')
             ->orderBy('hora', 'asc')
             ->first();
@@ -477,7 +491,9 @@ class PacienteController extends Controller
                 'animo_actual' => $paciente->nivel_estres_actual > 26 ? 'Alto' : ($paciente->nivel_estres_actual > 21 ? 'Moderado' : 'Bajo'),
                 'mejora_porcentaje' => 15,
                 'total_sesiones' => $totalSesiones,
-                'proxima_sesion' => $proximaSesion ? $proximaSesion->fecha . ' ' . $proximaSesion->hora : null,
+                'proxima_sesion' => $proximaSesion
+                    ? Carbon::parse($proximaSesion->fecha . ' ' . $proximaSesion->hora)->toIso8601String()
+                    : null,
                 'tareas_completadas_porcentaje' => $porcentajeGlobal,
                 'total_tareas' => $totalActividades,
                 'modulos_completados' => $resumenModulos,
