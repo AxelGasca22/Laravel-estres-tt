@@ -3,11 +3,11 @@ name: Deploy Laravel to Azure (OIDC)
 on:
   push:
     branches:
-      - main   # cambia si usas otra branch
+      - main   
 
 permissions:
   contents: read
-  id-token: write   # 🔥 CLAVE para OIDC
+  id-token: write  
 
 jobs:
   build-and-deploy:
