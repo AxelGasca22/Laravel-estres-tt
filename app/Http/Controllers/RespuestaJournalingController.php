@@ -29,8 +29,6 @@ class RespuestaJournalingController extends Controller
             'actividad_id'      => 'required|integer|exists:actividades,id',
             'titulo'            => 'nullable|string|max:255',
             'respuesta'         => 'required|string',
-            'nivel_estres'      => 'nullable|string|max:100',
-            'estado_animo'      => 'nullable|string|max:100',
             'visible_psicologo' => 'boolean',
         ]);
 
@@ -39,8 +37,6 @@ class RespuestaJournalingController extends Controller
             'actividad_id'      => $validated['actividad_id'],
             'titulo'            => $validated['titulo'] ?? null,
             'respuesta'         => $validated['respuesta'],
-            'nivel_estres'      => $validated['nivel_estres'] ?? null,
-            'estado_animo'      => $validated['estado_animo'] ?? null,
             'visible_psicologo' => $validated['visible_psicologo'] ?? true,
         ]);
 
