@@ -7,7 +7,6 @@ use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\ProgresoActividadController;
 use App\Http\Controllers\PsicologoController;
 use App\Http\Controllers\RespuestaJournalingController;
-use App\Http\Controllers\RespuestaTestController;
 use App\Http\Controllers\SesionController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
@@ -47,10 +46,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [PsicologoController::class, 'dashboard']);
     Route::apiResource('/sesiones', SesionController::class)->parameters(['sesiones' => 'sesion']);
     Route::get('/sesiones-ocupadas', [SesionController::class, 'bookedTimes']);
-    Route::apiResource('/tests', RespuestaTestController::class);
     Route::apiResource('/actividades', ActividadController::class);
     Route::patch('/actividades/{actividad}/modulo', [ActividadController::class, 'updateModulo']);
-    Route::post('/respuestas-test', [RespuestaTestController::class]);
     Route::apiResource('/progreso-actividad', ProgresoActividadController::class);
 
     // PSS/Test endpoints protegidos (requieren autenticación)

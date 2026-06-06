@@ -13,8 +13,6 @@ class RespuestaJournaling extends Model
         'actividad_id',
         'titulo',
         'respuesta',
-        'nivel_estres',
-        'estado_animo',
         'visible_psicologo',
     ];
 
