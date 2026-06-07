@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProgresoActividad;
 use App\Models\Psicologo;
-use App\Models\Calificacion;
+use App\Models\HistorialCalificacion;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -12,25 +12,27 @@ class AdminController extends Controller
 {
     public function index(Request $request)
     {
-        $currentMonth = Carbon::now()->month;
-        $currentYear = Carbon::now()->year;
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
         $psicologos = Psicologo::with('user')->get();
 
-        $estadisticas = $psicologos->map(function ($psicologo) use ($currentMonth, $currentYear) {
+        $estadisticas = $psicologos->map(function ($psicologo) use ($startOfMonth, $endOfMonth) {
             
             $pacientesIds = $psicologo->pacientes()->pluck('id');
 
-            // pacientes únicos que hicieron actividades este mes
+            // Pacientes únicos con actividades realmente realizadas (estado completado)
+            // durante el mes actual (por fecha de actualización).
             $pacientesConActividades = ProgresoActividad::whereIn('paciente_id', $pacientesIds)
-                ->whereMonth('fecha', $currentMonth)
-                ->whereYear('fecha', $currentYear)
+                ->where('estado', 'completado')
+                ->whereBetween('updated_at', [$startOfMonth, $endOfMonth])
                 ->distinct('paciente_id')
                 ->count('paciente_id');
 
-            // tests respondidos este mes por sus pacientes
-            $cuestionariosContestados = Calificacion::whereIn('paciente_id', $pacientesIds)
-                ->whereMonth('fecha_realizacion', $currentMonth)
-                ->whereYear('fecha_realizacion', $currentYear)
+            // Test contestados del mes: usar historial para contar intentos reales.
+            $cuestionariosContestados = HistorialCalificacion::whereHas('calificacion', function ($query) use ($pacientesIds) {
+                    $query->whereIn('paciente_id', $pacientesIds);
+                })
+                ->whereBetween('fecha', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
                 ->count();
 
             return [

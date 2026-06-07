@@ -14,4 +14,9 @@ class HistorialCalificacion extends Model
         'valor',
         'categoria',
     ];
+
+    public function calificacion()
+    {
+        return $this->belongsTo(Calificacion::class, 'calificacion_id');
+    }
 }
